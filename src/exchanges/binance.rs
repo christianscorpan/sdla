@@ -45,8 +45,6 @@ impl WebsocketClient for Binance {
         })
         .to_string()
     }
-    
-    
 }
 
 impl RestClient for Binance {

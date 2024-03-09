@@ -1,6 +1,10 @@
 use core::time;
 
-use crate::{balance::{Balance, BalanceBuffer}, tick::{Tick, TickBuffer}, BUFF_SIZE};
+use crate::{
+    balance::{Balance, BalanceBuffer},
+    tick::{Tick, TickBuffer},
+    BUFF_SIZE,
+};
 
 //gap arg from 0 to 1
 //fee_slow_buff arg from 0 to 1
@@ -17,14 +21,12 @@ pub async fn oneleg(
     fast_buff_back: &Tick,
     slow_buff_back: &Tick,
     balance_buff_back: &Balance,
-)
-{
+) {
     //get time difference between the two exchanges
 
     let time_diff_ms = fast_buff_back.timestamp2 as i64 - slow_buff_back.timestamp2 as i64;
     let time_diff_ms = time_diff_ms.abs();
     let time_diff_ms = time_diff_ms as usize;
-
 
     if (time_diff_ms < max_time_diff_ms) {
         // println!("time diff good: {}", time_diff_ms);
@@ -34,18 +36,15 @@ pub async fn oneleg(
         //get ratio of the exchanges' price
         let ratio: f64 = fast_buff_back.avg / slow_buff_back.avg;
 
-
         //test
         if (ratio > 1.0) {
-            println!("ratio: {}", ratio-1.0);
-        }
-        else {
-            println!("ratio: {}", 1.0-ratio);
+            println!("ratio: {}", ratio - 1.0);
+        } else {
+            println!("ratio: {}", 1.0 - ratio);
         }
 
         // if difference is greater than gap + fee, then trade
         if (ratio > 1. + norm_gap + fee_slow_buff || ratio < 1. - norm_gap - fee_slow_buff) {
-
             println!("ratio pass");
 
             let denorm_trade_size = norm_trade_size * balance_buff_back.amount;

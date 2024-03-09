@@ -53,11 +53,14 @@ impl Balance {
             },
             None => {
                 eprintln!("Error: balance is None");
-                let error_message = format!("Balance is None\n The json for the asset {} is: {}", asset, json_str);
+                let error_message = format!(
+                    "Balance is None\n The json for the asset {} is: {}",
+                    asset, json_str
+                );
                 return Err(error_message.into());
             }
         };
-        
+
         let balance: f64 = match balance_str.parse::<f64>() {
             Ok(balance) => balance,
             Err(e) => return Err(e.into()),

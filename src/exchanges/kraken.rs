@@ -36,8 +36,6 @@ impl WebsocketClient for Kraken {
             "subscription": {"name": "spread"}
         })
         .to_string()
-
-    
     }
 }
 
