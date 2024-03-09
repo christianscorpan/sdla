@@ -1,0 +1,5 @@
+/target
+/.vscode
+/src/config
+binance_buffer.json
+kraken_buffer.json
