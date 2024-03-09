@@ -22,6 +22,8 @@ use utils::*;
 use crate::exchanges::binance::Binance;
 use crate::exchanges::{Client, ExchangeMessage, RestClient, WebsocketClient};
 use crate::tick::{Tick, TickBuffer};
+use tokio::sync::Notify;
+
 //buffer const
 const BUFF_SIZE: usize = 100;
 
@@ -55,15 +57,42 @@ async fn main() {
     let asset_kraken = "PEPE/USD";
     let asset_binance = "PEPE/USDT";
 
+    let notify_kraken = Arc::new(Notify::new());
+    let notify_binance = Arc::new(Notify::new());
+    let balance_notify = Arc::new(Notify::new());
+    let balance_notify_clone = balance_notify.clone();
+
     let kraken_tx = tx.clone();
-    task::spawn(async move {
-        connect_and_run("Kraken", kraken, kraken_tx, asset_kraken).await;
+    task::spawn({
+        let notify_kraken_clone = Arc::clone(&notify_kraken);
+        async move {
+            connect_and_run(
+                "Kraken",
+                kraken,
+                kraken_tx,
+                asset_kraken,
+                notify_kraken_clone,
+            )
+            .await;
+        }
     });
 
     let binance_tx = tx.clone();
-    task::spawn(async move {
-        connect_and_run("Binance", binance, binance_tx, asset_binance).await;
+    task::spawn({
+        let notify_binance_clone = Arc::clone(&notify_binance);
+        async move {
+            connect_and_run(
+                "Binance",
+                binance,
+                binance_tx,
+                asset_binance,
+                notify_binance_clone,
+            )
+            .await;
+        }
     });
+    notify_kraken.notified().await;
+    notify_binance.notified().await;
 
     // Clone for the first async block (e.g., periodic REST API query for Kraken)
     let balance_buffer_kraken_clone_write = balance_buffer_kraken.clone();
@@ -89,6 +118,9 @@ async fn main() {
                 balance_buffer.add_balance(balance_kraken_struct.clone());
             }
 
+            // Notify that the first balance item is available
+            balance_notify.notify_one();
+
             // println!("Kraken balance: {:?}", balance_kraken_struct);
         }
     });
@@ -96,8 +128,8 @@ async fn main() {
     // Task for trading logic and execution
     task::spawn(async move {
         let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(10));
-        // Clone buffers for use in async tasks
 
+        balance_notify_clone.notified().await;
         loop {
             interval.tick().await;
 
@@ -195,11 +227,15 @@ async fn connect_and_run<T: WebsocketClient>(
     exchange: T,
     tx: mpsc::Sender<ExchangeMessage>,
     asset: &str,
+    notify: Arc<Notify>,
 ) {
     let (ws_stream, _) = connect_async(exchange.ws_url())
         .await
         .expect("Failed to connect");
     println!("WebSocket connected to {}", exchange_name);
+
+    // Notify that the exchange is connected
+    notify.notify_one();
 
     let (mut write, mut read) = ws_stream.split();
 
